@@ -1,0 +1,3 @@
+"# ConsolidatingCandles" 
+"# ConsolidatingCandles" 
+"# ConsolidatingCandles" 
