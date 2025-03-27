@@ -1,3 +1,1 @@
 "# ConsolidatingCandles" 
-"# ConsolidatingCandles" 
-"# ConsolidatingCandles" 
