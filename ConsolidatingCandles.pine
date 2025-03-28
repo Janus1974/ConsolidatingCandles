@@ -52,8 +52,8 @@ if (not na(lookback) and bar_index > lookback)
     for i = 1 to lookback
         if (high[i] >= bottom and low[i] <= top)
             barsWithinBox := barsWithinBox + 1
-            if (debug)
-                label.new(x = bar_index - i, y = na, yloc=yloc.belowbar, text="In Box", style=label.style_label_up, color=color.new(color.blue, 0), textcolor=color.white)
+            // if (debug)
+            //     label.new(x = bar_index - i, y = na, yloc=yloc.belowbar, text="In Box", style=label.style_label_up, color=color.new(color.blue, 0), textcolor=color.white)
 
     // Calculate the percentage of bars within the box
     percentageWithinBox := (barsWithinBox / lookback) * 100
