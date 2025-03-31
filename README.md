@@ -46,7 +46,7 @@ The Exponential Moving Average (EMA) functionality in the combined script serves
 ## EMA Calculation:
 The script calculates the Exponential Moving Average (EMA) using the ta.ema(close, length) function.
 
-Input Parameter: length is the period of the EMA (default is 50).
+Input Parameter: length is the period of the EMA (default is 9).
 
 This EMA is computed based on the closing prices of the specified period.
 
