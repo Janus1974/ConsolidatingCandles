@@ -18,7 +18,7 @@ pipSize = str.contains(syminfo.tickerid, "JPY") ? 0.20 : 0.0015
 boxColorBelowThreshold = input.color(defval=color.red, title="Box Color Below Threshold", group = "Consolidation")
 boxColorAboveThreshold = input.color(defval=color.green, title="Box Color Above Threshold",group = "Consolidation")
 percentageThreshold = input.float(defval=50, title="Percentage Threshold", minval=0, maxval=100, group = "Consolidation")
-debug_box = input.bool(defval=true, title="Debug Mode (Box)", group = "Consolidation")
+debug_box = input.bool(defval=false, title="Debug Mode (Box)", group = "Consolidation")
 
 // === Lookback Period Based on Timeframe ===
 lookback30min = input.int(title = "30 Min Lookback", defval = 32, group = "Consolidation Lookbacks")
