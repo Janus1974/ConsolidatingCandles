@@ -40,6 +40,72 @@ If the percentage of candles within the box meets or exceeds the threshold, the 
 
 The box is drawn dynamically, updating as new candles form.
 
+# Overview of EMA Functionality
+The Exponential Moving Average (EMA) functionality in the combined script serves as a core feature for determining the trend direction based on the moving average of the price. Here’s a breakdown of how it works:
+
+## EMA Calculation:
+The script calculates the Exponential Moving Average (EMA) using the ta.ema(close, length) function.
+
+Input Parameter: length is the period of the EMA (default is 50).
+
+This EMA is computed based on the closing prices of the specified period.
+
+Comparison with Past EMA:
+
+The script also calculates the EMA value from 24 hours ago (24 bars ago in the chart’s timeframe), using ema_now[24].
+
+This allows comparison between the current EMA and the EMA from the past to determine if the trend is upward, downward, or sideways.
+
+## Determining Trend Direction:
+Uptrend: If the current EMA (ema_now) is greater than the EMA from 24 hours ago (ema_past), the trend is considered up.
+
+Indicator: An upward arrow (🔼) is displayed.
+
+Background Color: The background is green if the trend is strong (i.e., the EMA change is above the threshold), or orange if the trend is weak (i.e., the EMA change is below the threshold).
+
+Downtrend: If the current EMA is less than the past EMA, the trend is considered down.
+
+Indicator: A downward arrow (🔽) is displayed.
+
+Background Color: Similar to an uptrend, the background color changes based on the strength of the trend.
+
+Sideways (No significant trend): If the current EMA is close to the past EMA (i.e., little change), it indicates a sideways market.
+
+Indicator: A sideways arrow (➖) is displayed.
+
+Background Color: The background will be amber (default for weak trends).
+
+## Trend Strength (Background Color):
+The strength of the trend is determined by the percentage change between the current EMA and the EMA from 24 hours ago.
+
+Formula:
+
+\[
+\text{EMA Change} = \left( \frac{| \text{EMA Now} - \text{EMA Past} |}{\text{EMA Past}} \right) \times 100
+\]
+
+If the change exceeds the threshold (default 0.5%), it indicates a strong trend and the background color is set to green.
+
+If the change is below the threshold, the background is set to amber, indicating a weak or insignificant trend.
+
+## Debug Mode (EMA):
+Debug Mode can be toggled on (debug_ema = true), which will display additional information about the EMA on the chart.
+
+Current EMA Value: This is displayed above the current candle (or bar) in green for uptrends, red for downtrends, and gray for sideways movement.
+
+EMA Value from 24 Hours Ago: Displayed below the current candle, with colors inversely matching the trend direction (e.g., red if the trend is up, green if the trend is down).
+
+Purpose: This mode helps in visualizing the EMA values and understanding how the trend is developing over time.
+
+## Table Display (EMA Information):
+A table is displayed in the top-right corner of the chart that shows the direction of the trend (using the up, down, or sideways arrows) and the trend strength based on the EMA change.
+
+The table updates in real-time as the trend shifts and the EMA is recalculated.
+
+Trend direction is represented by an arrow, and the background color of the table adjusts based on whether the trend is strong (green) or weak (amber).
+
+
+
 # How to install 
 
 ## Step 1: Open the Pine Script Editor
