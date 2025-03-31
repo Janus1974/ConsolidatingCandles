@@ -3,7 +3,7 @@ indicator("EMA Trend and Consolidating Candles", overlay=true)
 
 // === EMA Trend Parameters ===
 length = input(defval=9, title = "EMA Length", group = "EMA" )  // EMA period
-threshold = input.float(defval=0.5,title =  "Trend Change % Threshold", group = "EMA" )  // Change sensitivity
+threshold = input.float(defval=0.25,title =  "Trend Change % Threshold", group = "EMA" )  // Change sensitivity
 debug_ema = input.bool(defval=false,title =  "Enable Debug Mode (EMA)", group = "EMA" )  // Debug mode for EMA
 show_ema = input.bool(defval=true, title = "Show EMA Line", group = "EMA" )  // Toggle EMA line
 ema_color = input.color(defval=color.white,title =  "EMA Line Color", group = "EMA" )  // Choose EMA line color
