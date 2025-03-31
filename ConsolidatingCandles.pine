@@ -1,19 +1,30 @@
 //@version=6
-indicator("Consolidating Candles", overlay=true)
+indicator("EMA Trend and Consolidating Candles", overlay=true)
 
-// Define the pip size based on the symbol
-var float pipSize = str.contains(syminfo.tickerid, "JPY") ? 0.20 : 0.0015
+// === EMA Trend Parameters ===
+length = input(defval=50, title = "EMA Length", group = "EMA" )  // EMA period
+threshold = input.float(defval=0.5,title =  "Trend Change % Threshold", group = "EMA" )  // Change sensitivity
+debug_ema = input.bool(defval=false,title =  "Enable Debug Mode (EMA)", group = "EMA" )  // Debug mode for EMA
+show_ema = input.bool(defval=true, title = "Show EMA Line", group = "EMA" )  // Toggle EMA line
+ema_color = input.color(defval=color.white,title =  "EMA Line Color", group = "EMA" )  // Choose EMA line color
+up_arrow = input.string(defval="🔼", title = "Uptrend Symbol", group = "EMA" )
+down_arrow = input.string(defval="🔽", title = "Downtrend Symbol", group = "EMA" )
+side_arrow = input.string(defval="➖", title = "Sideways Symbol", group = "EMA" )
+strong_trend_color = input.color(defval=color.green, title = "Strong Trend Background", group = "EMA" )
+weak_trend_color = input.color(defval=color.orange, title = "Weak Trend Background", group = "EMA" )
 
-// Input parameters for colors and percentage threshold
-color boxColorBelowThreshold = input.color(color.red, title="Box Color Below Threshold")
-color boxColorAboveThreshold = input.color(color.green, title="Box Color Above Threshold")
-float percentageThreshold = input.float(90, title="Percentage Threshold", minval=0, maxval=100)
-bool showTable = input.bool(true, title="Show Table")
-// bool debug = input.bool(true, title="Debug Mode")
-int lookback30min = input.int(title = "30 Min Lookback", defval = 32, group = "Lookbacks")
-int lookback1hr = input.int(title = "1 Hour Lookback", defval = 24, group = "Lookbacks")
-int lookback2hr = input.int(title = "2 Hour Lookback", defval = 12, group = "Lookbacks")
-int lookback4hr = input.int(title = "4 Hour Lookback", defval = 9, group = "Lookbacks")
+// === Consolidating Candles Parameters ===
+pipSize = str.contains(syminfo.tickerid, "JPY") ? 0.20 : 0.0015
+boxColorBelowThreshold = input.color(defval=color.red, title="Box Color Below Threshold", group = "Consolidation")
+boxColorAboveThreshold = input.color(defval=color.green, title="Box Color Above Threshold",group = "Consolidation")
+percentageThreshold = input.float(defval=50, title="Percentage Threshold", minval=0, maxval=100, group = "Consolidation")
+debug_box = input.bool(defval=true, title="Debug Mode (Box)", group = "Consolidation")
+
+// === Lookback Period Based on Timeframe ===
+lookback30min = input.int(title = "30 Min Lookback", defval = 32, group = "Consolidation Lookbacks")
+lookback1hr = input.int(title = "1 Hour Lookback", defval = 24, group = "Consolidation Lookbacks")
+lookback2hr = input.int(title = "2 Hour Lookback", defval = 12, group = "Consolidation Lookbacks")
+lookback4hr = input.int(title = "4 Hour Lookback", defval = 9, group = "Consolidation Lookbacks")
 
 // Determine the lookback period based on the chart's timeframe
 var int lookback = na
@@ -27,7 +38,40 @@ if (timeframe.isintraday)
     else if (timeframe.multiplier == 240)
         lookback := lookback4hr
 
-// Initialize variables
+// === EMA Calculation ===
+ema_now = ta.ema(close, length)  // Current EMA
+ema_past = ema_now[24]  // EMA from 24 bars ago (same timeframe)
+
+// Plot EMA Line (if enabled)
+plot(show_ema ? ema_now : na, title="EMA", color=ema_color, linewidth=2)
+
+// Determine trend direction
+trend_up = ema_now > ema_past
+trend_down = ema_now < ema_past
+
+// Determine background color based on % change
+ema_change = math.abs((ema_now - ema_past) / ema_past) * 100
+bg_color = ema_change > threshold ? strong_trend_color : weak_trend_color
+
+// Select appropriate arrow for trend
+arrow = trend_up ? up_arrow : trend_down ? down_arrow : side_arrow
+
+// === EMA Trend Table ===
+var table trendTable = table.new(position=position.top_right, columns=1, rows=1, bgcolor=color.gray, border_width=1)
+table.cell(trendTable, 0, 0, arrow, text_color=color.white, bgcolor=bg_color, text_size=size.large)
+
+// === Debug Mode (EMA) ===
+if debug_ema
+    label_color_top = trend_up ? color.green : trend_down ? color.red : color.gray
+    label_color_bottom = trend_up ? color.red : trend_down ? color.green : color.gray
+
+    // Show current EMA above candle (trend-based color)
+    label.new(x=bar_index, y=high, text="EMA Now: " + str.tostring(ema_now, "#.##"), color=label_color_top, textcolor=color.white, size=size.tiny, xloc=xloc.bar_index)
+
+    // Show past EMA (24 hours ago) below candle (trend-based color)
+    label.new(x=bar_index, y=low, text="EMA 24H Ago: " + str.tostring(ema_past, "#.##"), color=label_color_bottom, textcolor=color.white, size=size.tiny, xloc=xloc.bar_index)
+
+// === Consolidating Candles Logic ===
 var float top = na
 var float bottom = na
 var int left = na
@@ -36,9 +80,7 @@ var float middle = na
 var float percentageWithinBox = na
 var int barsWithinBox = 0
 
-// Only proceed if the chart is is not a known timeframe
 if (not na(lookback) and bar_index > lookback) 
-
     // Get the coordinates for the square
     middle := (high[1] + low[1]) / 2
     top := middle + pipSize / 2
@@ -52,8 +94,6 @@ if (not na(lookback) and bar_index > lookback)
     for i = 1 to lookback
         if (high[i] >= bottom and low[i] <= top)
             barsWithinBox := barsWithinBox + 1
-            // if (debug)
-            //     label.new(x = bar_index - i, y = na, yloc=yloc.belowbar, text="In Box", style=label.style_label_up, color=color.new(color.blue, 0), textcolor=color.white)
 
     // Calculate the percentage of bars within the box
     percentageWithinBox := (barsWithinBox / lookback) * 100
@@ -66,8 +106,8 @@ if (not na(lookback) and bar_index > lookback)
     box.delete(b)
     b := box.new(left, top, right, bottom, border_color=color.new(backgroundColor, 80), border_width=2, bgcolor=color.new(backgroundColor, 80))
 
-    // Create and update the table
-    if (showTable)
+    // Create and update the table for consolidating candles
+    if (debug_box)
         var table tbl = table.new(position.top_right, 1, 3, border_width=1)
         table.cell(tbl, 0, 0, text="Candles within box: " + str.tostring(barsWithinBox), text_color=color.white, bgcolor=color.black)
         table.cell(tbl, 0, 1, text="Percentage: " + str.tostring(percentageWithinBox) + "%", text_color=color.white, bgcolor=color.black)
