@@ -82,7 +82,7 @@ Formula:
 
 $$EMAChange = {|EMA Now - EMAPast|\over EMAPast} X 100$$
 
-If the change exceeds the threshold (default 0.5%), it indicates a strong trend and the background color is set to green.
+If the change exceeds the threshold (default 0.25%), it indicates a strong trend and the background color is set to green.
 
 If the change is below the threshold, the background is set to amber, indicating a weak or insignificant trend.
 
