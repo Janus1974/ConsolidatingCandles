@@ -80,9 +80,7 @@ The strength of the trend is determined by the percentage change between the cur
 
 Formula:
 
-\[
-\text{EMA Change} = \left( \frac{| \text{EMA Now} - \text{EMA Past} |}{\text{EMA Past}} \right) \times 100
-\]
+$$EMAChange = {|EMA Now - EMAPast|\over EMAPast} X 100$$
 
 If the change exceeds the threshold (default 0.5%), it indicates a strong trend and the background color is set to green.
 
