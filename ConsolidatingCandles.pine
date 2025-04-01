@@ -1,9 +1,14 @@
 //@version=6
 indicator("EMA Trend and Consolidating Candles", overlay=true)
 
+// Input parameters
+showTimer = input.bool(true, title="Show Countdown Timer", group = "Timer")
+timerTextSize = input.string("small", title="Timer Text Size", options=["small", "normal", "large"], group = "Timer")
+timerTextColor = input.color(color.white, title="Timer Text Color", group = "Timer")
+timerBgColor = input.color(color.blue, title="Timer Background Color", group = "Timer")
 // === EMA Trend Parameters ===
 length = input(defval=9, title = "EMA Length", group = "EMA" )  // EMA period
-threshold = input.float(defval=0.25,title =  "Trend Change % Threshold", group = "EMA" )  // Change sensitivity
+threshold = input.float(defval=0.5,title =  "Trend Change % Threshold", group = "EMA" )  // Change sensitivity
 debug_ema = input.bool(defval=false,title =  "Enable Debug Mode (EMA)", group = "EMA" )  // Debug mode for EMA
 show_ema = input.bool(defval=true, title = "Show EMA Line", group = "EMA" )  // Toggle EMA line
 ema_color = input.color(defval=color.white,title =  "EMA Line Color", group = "EMA" )  // Choose EMA line color
@@ -112,3 +117,18 @@ if (not na(lookback) and bar_index > lookback)
         table.cell(tbl, 0, 0, text="Candles within box: " + str.tostring(barsWithinBox), text_color=color.white, bgcolor=color.black)
         table.cell(tbl, 0, 1, text="Percentage: " + str.tostring(percentageWithinBox) + "%", text_color=color.white, bgcolor=color.black)
         table.cell(tbl, 0, 2, text="Lookback: " + str.tostring(lookback) + " Candles", text_color=color.white, bgcolor=color.black)
+
+// Calculate time remaining until next candle closes
+secondsLeft = (time_close - timenow) / 1000
+hh = int(secondsLeft / 3600)
+mm = int((secondsLeft % 3600) / 60)
+ss = int(secondsLeft % 60)
+timeLeft = str.tostring(hh, "00") + ":" + str.tostring(mm, "00") + ":" + str.tostring(ss, "00")
+
+// Create table only once
+var table timerTable = table.new(position.bottom_right, 1, 1, bgcolor=timerBgColor)
+
+// Update the table cell if the timer display is enabled
+if showTimer
+    labelText = "Next Candle: " + timeLeft
+    table.cell(timerTable, 0, 0, labelText, text_color=timerTextColor, text_size=timerTextSize)
