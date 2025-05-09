@@ -1,38 +1,103 @@
+
 //@version=6
-indicator("EMA Trend and Consolidating Candles", overlay=true)
+indicator("Price Action Trend and Consolidating Candles", overlay=true)
 
-// Input parameters
-showTimer = input.bool(true, title="Show Countdown Timer", group = "Timer")
-timerTextSize = input.string("small", title="Timer Text Size", options=["small", "normal", "large"], group = "Timer")
-timerTextColor = input.color(color.white, title="Timer Text Color", group = "Timer")
-timerBgColor = input.color(color.blue, title="Timer Background Color", group = "Timer")
-// === EMA Trend Parameters ===
-length = input(defval=9, title = "EMA Length", group = "EMA" )  // EMA period
-threshold = input.float(defval=0.5,title =  "Trend Change % Threshold", group = "EMA" )  // Change sensitivity
-debug_ema = input.bool(defval=false,title =  "Enable Debug Mode (EMA)", group = "EMA" )  // Debug mode for EMA
-show_ema = input.bool(defval=true, title = "Show EMA Line", group = "EMA" )  // Toggle EMA line
-ema_color = input.color(defval=color.white,title =  "EMA Line Color", group = "EMA" )  // Choose EMA line color
-up_arrow = input.string(defval="🔼", title = "Uptrend Symbol", group = "EMA" )
-down_arrow = input.string(defval="🔽", title = "Downtrend Symbol", group = "EMA" )
-side_arrow = input.string(defval="➖", title = "Sideways Symbol", group = "EMA" )
-strong_trend_color = input.color(defval=color.green, title = "Strong Trend Background", group = "EMA" )
-weak_trend_color = input.color(defval=color.orange, title = "Weak Trend Background", group = "EMA" )
+// === Inputs ===
+groupTrend="Trend"
+lookback_hours = input.int(24, title = 'Lookback Period (Hours)', minval = 1, group = groupTrend) // Default is 36 hours
+swingStrength = input.int(5, title = 'Swing Strength', minval = 1, group = groupTrend) // Higher = smoother, fewer swings
+plotSwings = input.bool(false, title = 'Plot Swing Points', group = groupTrend) // Option to plot swing points
 
-// === Consolidating Candles Parameters ===
-pipSize = str.contains(syminfo.tickerid, "JPY") ? 0.20 : 0.0015
-boxColorBelowThreshold = input.color(defval=color.red, title="Box Color Below Threshold", group = "Consolidation")
-boxColorAboveThreshold = input.color(defval=color.green, title="Box Color Above Threshold",group = "Consolidation")
-percentageThreshold = input.float(defval=90, title="Percentage Threshold", minval=0, maxval=100, group = "Consolidation")
-debug_box = input.bool(defval=false, title="Debug Mode (Box)", group = "Consolidation")
-
-// === Lookback Period Based on Timeframe ===
-lookback30min = input.int(title = "30 Min Lookback", defval = 32, group = "Consolidation Lookbacks")
-lookback1hr = input.int(title = "1 Hour Lookback", defval = 24, group = "Consolidation Lookbacks")
-lookback2hr = input.int(title = "2 Hour Lookback", defval = 12, group = "Consolidation Lookbacks")
-lookback4hr = input.int(title = "4 Hour Lookback", defval = 9, group = "Consolidation Lookbacks")
-
-// Determine the lookback period based on the chart's timeframe
+// === Calculate Lookback in Bars ===
 var int lookback = na
+if timeframe.isintraday
+    lookback := lookback_hours * 60 / timeframe.multiplier // Convert hours to bars based on current timeframe
+    lookback
+
+// === Swing Highs and Lows ===
+swingHigh = ta.pivothigh(high, swingStrength, swingStrength)
+swingLow = ta.pivotlow(low, swingStrength, swingStrength)
+
+// === Store swing points ===
+var array<float> swingHighs = array.new_float()
+var array<float> swingLows = array.new_float()
+var array<int> swingHighIndexes = array.new_int()
+var array<int> swingLowIndexes = array.new_int()
+
+if not na(swingHigh)
+    array.push(swingHighs, swingHigh)
+    array.push(swingHighIndexes, bar_index)
+
+if not na(swingLow)
+    array.push(swingLows, swingLow)
+    array.push(swingLowIndexes, bar_index)
+
+// === Clean up old swing highs beyond lookback
+i = array.size(swingHighIndexes) - 1
+while i >= 0
+    if bar_index - array.get(swingHighIndexes, i) > lookback
+        array.remove(swingHighs, i)
+        array.remove(swingHighIndexes, i)
+    i := i - 1
+    i
+
+// === Clean up old swing lows beyond lookback
+j = array.size(swingLowIndexes) - 1
+while j >= 0
+    if bar_index - array.get(swingLowIndexes, j) > lookback
+        array.remove(swingLows, j)
+        array.remove(swingLowIndexes, j)
+    j := j - 1
+    j
+
+// === Determine Trend ===
+isUptrend = false
+isDowntrend = false
+
+if array.size(swingHighs) >= 2 and array.size(swingLows) >= 2
+    hh = true
+    hl = true
+    lh = true
+    ll = true
+
+    for k = 1 to array.size(swingHighs) - 1 by 1
+        hh := hh and array.get(swingHighs, k) > array.get(swingHighs, k - 1)
+        lh := lh and array.get(swingHighs, k) < array.get(swingHighs, k - 1)
+        lh
+
+    for k = 1 to array.size(swingLows) - 1 by 1
+        hl := hl and array.get(swingLows, k) > array.get(swingLows, k - 1)
+        ll := ll and array.get(swingLows, k) < array.get(swingLows, k - 1)
+        ll
+
+    isUptrend := hh and hl
+    isDowntrend := lh and ll
+    isDowntrend
+
+// === Text and Color for Trend Status ===
+trendText = isUptrend ? 'Uptrend' : isDowntrend ? 'Downtrend' : 'No Clear Trend'
+trendColor = isUptrend ? color.green : isDowntrend ? color.red : color.gray
+
+var table trendTable = table.new(position.top_right, 1, 1, bgcolor=trendColor)
+table.cell(trendTable, 0, 0, 'Trend: ' + trendText, text_color=color.white, bgcolor = trendColor )
+
+// === Optional: Mark Swing Points ===
+// Plot swing points outside of local scope
+plotshape(series = not na(swingHigh) and plotSwings, location = location.abovebar, color = color.orange, style = shape.triangledown, size = size.small, title = 'Swing High')
+plotshape(series = not na(swingLow) and plotSwings, location = location.belowbar, color = color.teal, style = shape.triangleup, size = size.small, title = 'Swing Low')
+
+// === Consolidation Detection ===
+pipSize = str.contains(syminfo.tickerid, "JPY") ? 0.20 : 0.0015
+boxColorBelowThreshold = input.color(defval=color.red, title="Box Color Below Threshold", group="Consolidation")
+boxColorAboveThreshold = input.color(defval=color.green, title="Box Color Above Threshold", group="Consolidation")
+percentageThreshold = input.float(defval=90, title="Percentage Threshold", minval=0, maxval=100, group="Consolidation")
+
+lookback30min = input.int(title="30 Min Lookback", defval=32, group="Consolidation Lookbacks")
+lookback1hr = input.int(title="1 Hour Lookback", defval=24, group="Consolidation Lookbacks")
+lookback2hr = input.int(title="2 Hour Lookback", defval=12, group="Consolidation Lookbacks")
+lookback4hr = input.int(title="4 Hour Lookback", defval=12, group="Consolidation Lookbacks")
+
+// var int lookback = na
 if (timeframe.isintraday)
     if (timeframe.multiplier == 30)
         lookback := lookback30min
@@ -43,40 +108,6 @@ if (timeframe.isintraday)
     else if (timeframe.multiplier == 240)
         lookback := lookback4hr
 
-// === EMA Calculation ===
-ema_now = ta.ema(close, length)  // Current EMA
-ema_past = ema_now[24]  // EMA from 24 bars ago (same timeframe)
-
-// Plot EMA Line (if enabled)
-plot(show_ema ? ema_now : na, title="EMA", color=ema_color, linewidth=2)
-
-// Determine trend direction
-trend_up = ema_now > ema_past
-trend_down = ema_now < ema_past
-
-// Determine background color based on % change
-ema_change = math.abs((ema_now - ema_past) / ema_past) * 100
-bg_color = ema_change > threshold ? strong_trend_color : weak_trend_color
-
-// Select appropriate arrow for trend
-arrow = trend_up ? up_arrow : trend_down ? down_arrow : side_arrow
-
-// === EMA Trend Table ===
-var table trendTable = table.new(position=position.top_right, columns=1, rows=1, bgcolor=color.gray, border_width=1)
-table.cell(trendTable, 0, 0, arrow, text_color=color.white, bgcolor=bg_color, text_size=size.large)
-
-// === Debug Mode (EMA) ===
-if debug_ema
-    label_color_top = trend_up ? color.green : trend_down ? color.red : color.gray
-    label_color_bottom = trend_up ? color.red : trend_down ? color.green : color.gray
-
-    // Show current EMA above candle (trend-based color)
-    label.new(x=bar_index, y=high, text="EMA Now: " + str.tostring(ema_now, "#.##"), color=label_color_top, textcolor=color.white, size=size.tiny, xloc=xloc.bar_index)
-
-    // Show past EMA (24 hours ago) below candle (trend-based color)
-    label.new(x=bar_index, y=low, text="EMA 24H Ago: " + str.tostring(ema_past, "#.##"), color=label_color_bottom, textcolor=color.white, size=size.tiny, xloc=xloc.bar_index)
-
-// === Consolidating Candles Logic ===
 var float top = na
 var float bottom = na
 var int left = na
@@ -85,50 +116,39 @@ var float middle = na
 var float percentageWithinBox = na
 var int barsWithinBox = 0
 
-if (not na(lookback) and bar_index > lookback) 
-    // Get the coordinates for the square
+// Ensure that lookback is greater than 0 and valid before using it
+if not na(lookback) and lookback > 0 and bar_index > lookback
     middle := (high[1] + low[1]) / 2
     top := middle + pipSize / 2
     bottom := middle - pipSize / 2
     left := bar_index - lookback + 1
     right := bar_index - 1
-
-    // Initialize barsWithinBox
     barsWithinBox := 0
-    // Count the number of bars within the box
-    for i = 1 to lookback
-        if (high[i] >= bottom and low[i] <= top)
-            barsWithinBox := barsWithinBox + 1
 
-    // Calculate the percentage of bars within the box
+    // Iterate from 1 to lookback, ensuring the range is valid and greater than 0
+    for p = 1 to lookback - 1
+        if high[p] >= bottom and low[p] <= top
+            barsWithinBox += 1
+
     percentageWithinBox := (barsWithinBox / lookback) * 100
-
-    // Determine the background color based on the percentage of bars within the box
     color backgroundColor = percentageWithinBox >= percentageThreshold ? boxColorBelowThreshold : boxColorAboveThreshold
 
-    // Draw the box with the background color and 30% opacity
     var box b = na
     box.delete(b)
     b := box.new(left, top, right, bottom, border_color=color.new(backgroundColor, 80), border_width=2, bgcolor=color.new(backgroundColor, 80))
 
-    // Create and update the table for consolidating candles
-    if (debug_box)
-        var table tbl = table.new(position.top_right, 1, 3, border_width=1)
-        table.cell(tbl, 0, 0, text="Candles within box: " + str.tostring(barsWithinBox), text_color=color.white, bgcolor=color.black)
-        table.cell(tbl, 0, 1, text="Percentage: " + str.tostring(percentageWithinBox) + "%", text_color=color.white, bgcolor=color.black)
-        table.cell(tbl, 0, 2, text="Lookback: " + str.tostring(lookback) + " Candles", text_color=color.white, bgcolor=color.black)
+// === Timer ===
+showTimer = input.bool(true, title="Show Countdown Timer", group="Timer")
+timerTextSize = input.string("small", title="Timer Text Size", options=["small", "normal", "large"], group="Timer")
+timerTextColor = input.color(color.white, title="Timer Text Color", group="Timer")
+timerBgColor = input.color(color.blue, title="Timer Background Color", group="Timer")
 
-// Calculate time remaining until next candle closes
 secondsLeft = (time_close - timenow) / 1000
-hh = int(secondsLeft / 3600)
-mm = int((secondsLeft % 3600) / 60)
-ss = int(secondsLeft % 60)
-timeLeft = str.tostring(hh, "00") + ":" + str.tostring(mm, "00") + ":" + str.tostring(ss, "00")
+timer_hh = int(secondsLeft / 3600)
+timer_mm = int((secondsLeft % 3600) / 60)
+timer_ss = int(secondsLeft % 60)
+timeLeft = str.tostring(timer_hh, "00") + ":" + str.tostring(timer_mm, "00") + ":" + str.tostring(timer_ss, "00")
 
-// Create table only once
 var table timerTable = table.new(position.bottom_right, 1, 1, bgcolor=timerBgColor)
-
-// Update the table cell if the timer display is enabled
 if showTimer
-    labelText = "Next Candle: " + timeLeft
-    table.cell(timerTable, 0, 0, labelText, text_color=timerTextColor, text_size=timerTextSize)
+    table.cell(timerTable, 0, 0, "Next Candle: " + timeLeft, text_color=timerTextColor, text_size=timerTextSize)
